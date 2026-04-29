@@ -981,7 +981,7 @@ function buildRowsB(saved) {
 function buildSummaryA(saved) {
   const d = saved.discount || ''; const vat = saved.vat || ''; const total = saved.total || '';
   return `<tfoot>
-    <tr class="total-row"><td colspan="5" style="text-align:center">소계</td><td id="subTotal" class="right" style="text-align:right;padding-right:8px"></td><td></td></tr>
+    <tr class="total-row"><td colspan="5" style="text-align:center">합계</td><td id="subTotal" class="right" style="text-align:right;padding-right:8px"></td><td></td></tr>
     <tr class="sum-row">
       <td colspan="5" style="text-align:center;font-weight:700">절사금액</td>
       <td style="text-align:right;padding-right:8px">
@@ -997,7 +997,7 @@ function buildSummaryA(saved) {
       </td>
     </tr>
     <tr class="sum-row"><td colspan="5" style="text-align:center;font-weight:700">부가가치세</td><td id="vatVal" style="text-align:right;padding-right:8px"></td><td></td></tr>
-    <tr class="total-row"><td colspan="5" style="text-align:center;font-size:13px">견적금액(공급가액+세액)</td><td id="totalVal" style="text-align:right;padding-right:8px;font-size:13.5px"></td><td></td></tr>
+    <tr class="total-row final-total-row"><td colspan="5" style="text-align:center;font-size:13px">견적금액(공급가액+세액)</td><td id="totalVal" style="text-align:right;padding-right:8px;font-size:13.5px"></td><td></td></tr>
   </tfoot>`;
 }
 
@@ -1265,14 +1265,19 @@ function addExpRowB() {
     <td><input class="exp-note nav-cell"></td>
   `;
   body.appendChild(tr);
-  buildNavMap();
+  attachEvents();
+  calcBreakdown();
+  positionFloatBtns();
+  setTimeout(() => paginateBreakdownB(document.querySelectorAll('.doc-page').length), 50);
 }
 
 function delExpRowB() {
   const body = document.getElementById('expenseBodyB');
-  if (!body || body.rows.length === 0) return;
+  if (!body || body.rows.length <= 1) return; // 최소 1행 유지
   body.deleteRow(-1);
   calcBreakdown();
+  positionFloatBtns();
+  setTimeout(() => paginateBreakdownB(document.querySelectorAll('.doc-page').length), 50);
 }
 
 // ═══════════════════════════════════════════════
@@ -1304,13 +1309,24 @@ function wrapProjectName(el) {
 
 function attachEvents() {
   // 수량/단가 콤마 포맷 + 계산
-  document.querySelectorAll('.row-qty, .row-price').forEach(el => {
+  document.querySelectorAll('.row-qty, .row-price, .exp-qty, .exp-uprice').forEach(el => {
     el.addEventListener('input', () => {
       const raw = el.value.replace(/,/g,'');
       if (!isNaN(raw) && raw !== '') el.value = parseFloat(raw).toLocaleString('ko-KR');
-      calcAll();
+      
+      if (el.classList.contains('exp-qty') || el.classList.contains('exp-uprice')) {
+        calcBreakdown();
+      } else {
+        calcAll();
+      }
     });
-    el.addEventListener('blur', calcAll);
+    el.addEventListener('blur', () => {
+      if (el.classList.contains('exp-qty') || el.classList.contains('exp-uprice')) {
+        calcBreakdown();
+      } else {
+        calcAll();
+      }
+    });
   });
 
   // auto-textarea 높이
